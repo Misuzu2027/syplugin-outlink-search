@@ -1,0 +1,26 @@
+.document-search-plugin__area .block__icon--show.block__icon.disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+}
+
+::highlight(fowardlink-search-result-mark) {
+    background-color: var(--b3-protyle-inline-mark-background);
+    color: var(--b3-protyle-inline-mark-color);
+}
+
+::highlight(fowardlink-search-result-focus) {
+    background-color: var(--b3-theme-primary-lighter);
+    color: var(--b3-protyle-inline-mark-color);
+}
+
+.misuzu2027_outlink-search-dock .doc-path {
+    /* 默认不显示下划线 */
+    text-decoration: none;
+    /* 设置鼠标指针为手型 */
+    cursor: pointer;
+}
+
+.misuzu2027_outlink-search-dock .doc-path:hover {
+    /* 悬浮时显示下划线 */
+    text-decoration: underline;
+}
