@@ -2,7 +2,7 @@
   "name": "syplugin-outlink-search",
   "author": "Misuzu2027",
   "url": "https://github.com/Misuzu2027/syplugin-outlink-search",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "minAppVersion": "3.0.12",
   "backends": [
     "windows",
@@ -25,8 +25,8 @@
     "zh_CN": "出链搜索"
   },
   "description": {
-    "en_US": "可以查看和搜索当前文档中出链块及其子块的关键字",
-    "zh_CN": "可以查看和搜索当前文档中出链块及其子块的关键字"
+    "en_US": "可以查看和搜索当前文档中出链块及其子块包含的关键字",
+    "zh_CN": "可以查看和搜索当前文档中出链块及其子块包含的关键字"
   },
   "readme": {
     "zh_CN": "README_zh_CN.md"
