@@ -10,7 +10,11 @@
   import { openSettingsDialog } from "@/components/setting/setting-util";
 
   import { getBlockByID, getBlockIsFolded } from "@/utils/api";
-  import { bgFade, getOpenTabActionByZoomIn } from "@/utils/siyuan-util";
+  import {
+    bgFade,
+    getActiveTabId,
+    getOpenTabActionByZoomIn,
+  } from "@/utils/siyuan-util";
   import { BlockItem, DocumentItem } from "@/models/outlink-model";
   import {
     clearCssHighlights,
@@ -27,13 +31,14 @@
   import { delayedTwiceRefresh } from "@/utils/timing-util";
   import { SettingService } from "@/service/setting/SettingService";
   import { OutLinkDataService } from "@/service/outlink/OutLinkService";
-  import { isStrNotBlank } from "@/utils/string-util";
+  import { isStrBlank, isStrNotBlank } from "@/utils/string-util";
   import { SETTING_DOCUMENT_SORT_MODE_ELEMENT } from "@/models/setting-constant";
   import { CacheManager } from "@/config/CacheManager";
 
   let rootElement: HTMLElement;
   let documentSearchInputElement: HTMLInputElement;
 
+  let lockDocumentPath: boolean = false;
   let crossBlockSearch: boolean;
   // let outlinkQueryDepth: number;
   let documentSortMode: DocumentSortMode;
@@ -41,11 +46,11 @@
   let lastRootId = "";
   let lastFocusBlockId = "";
 
-  let showCurDocName: string = "";
+  let showCurDocumentName: string = "";
 
   let allFowardlinkIdSet: Set<string> = new Set<string>();
-  let allQueryDocItemArray: DocumentItem[] = [];
-  let curPageDocItemArray: DocumentItem[] = [];
+  let allQueryDocumentItemArray: DocumentItem[] = [];
+  let curPageDocumentItemArray: DocumentItem[] = [];
 
   let searchInputKey: string = "";
   let selectedItemIndex: number = -1;
@@ -61,13 +66,16 @@
   // let notebookMap: Map<string, Notebook> = new Map();
 
   onMount(async () => {
+    initEvent();
     initData();
   });
 
   onDestroy(() => {});
 
   export async function switchDoc(rootId: string, focusBlockId: string) {
-    console.log("switchDoc rootId ", rootId, " , focusBlockId ", focusBlockId);
+    if (lockDocumentPath) {
+      return;
+    }
     if (!rootId && !focusBlockId) {
       return;
     }
@@ -110,6 +118,26 @@
     curPage = 1;
   }
 
+  function initEvent() {
+    rootElement.addEventListener("mousedown", () => {
+      window.siyuan.menus.menu.remove();
+    });
+
+    rootElement.addEventListener("click", (event: any) => {
+      const target = event.target;
+
+      if (
+        target.tagName.toLowerCase() === "span" &&
+        target.hasAttribute("data-path-type")
+      ) {
+        // let pathType = target.getAttribute("data-path-type");
+        let dataId = target.getAttribute("data-id");
+
+        openBlockTab(dataId, dataId);
+      }
+    });
+  }
+
   async function refreshNotebook() {
     EnvConfig.ins.refreshNotebookMap();
   }
@@ -126,14 +154,14 @@
       // let pathSplit = parentDocInfo.path.split("/");
       showCurDocNameTemp += `<span class="doc-path" data-path-type="doc" data-id="${docId}">${docInfo.content}</span>`;
     }
-    showCurDocName = showCurDocNameTemp;
+    showCurDocumentName = showCurDocNameTemp;
   }
 
   function handleKeyDownSelectItem(event: KeyboardEvent) {
     let selectedBlockItem = selectItemByArrowKeys(
       event,
       selectedItemIndex,
-      curPageDocItemArray
+      curPageDocumentItemArray
     );
 
     if (selectedBlockItem) {
@@ -148,6 +176,17 @@
         openBlockTab(block.id, block.root_id);
       }
     }
+    if (event.altKey && event.key === "d") {
+      event.preventDefault();
+      event.stopPropagation();
+
+      clickSwitchCurShowDocIcon();
+    } else if (event.altKey && event.key === "q") {
+      event.preventDefault();
+      event.stopPropagation();
+
+      lockDocumentPath = !lockDocumentPath;
+    }
     if (event.altKey && event.key === "r") {
       event.preventDefault();
       event.stopPropagation();
@@ -157,7 +196,7 @@
   }
 
   function expandSelectedItemDocument(selectedItem: DocumentItem | BlockItem) {
-    if (!selectedItem || !curPageDocItemArray) {
+    if (!selectedItem || !curPageDocumentItemArray) {
       return;
     }
     // 响应式有延迟，需要自己修改一下类样式。。。
@@ -167,7 +206,7 @@
     itemElements.forEach((element) => {
       element.classList.remove("fn__none");
     });
-    for (const item of curPageDocItemArray) {
+    for (const item of curPageDocumentItemArray) {
       if (!item.isCollapsed) {
         continue;
       }
@@ -265,10 +304,10 @@
       documentSortMode
     );
 
-    allQueryDocItemArray =
+    allQueryDocumentItemArray =
       await OutLinkDataService.ins.getDocumentItemArray(queryCriteria);
     isSearching = Math.max(0, isSearching - 1);
-    allDocumentCount = allQueryDocItemArray.length;
+    allDocumentCount = allQueryDocumentItemArray.length;
 
     lastIncludeKeywords = queryCriteria.includeKeywords;
 
@@ -287,10 +326,11 @@
     selectedItemIndex = -1;
     let pageSize = SettingService.ins.SettingConfig.pageSize;
     totalPage = Math.ceil(allDocumentCount / pageSize);
-    curPageDocItemArray = await OutLinkDataService.ins.getPageDocumentItemArray(
-      allQueryDocItemArray,
-      curPage
-    );
+    curPageDocumentItemArray =
+      await OutLinkDataService.ins.getPageDocumentItemArray(
+        allQueryDocumentItemArray,
+        curPage
+      );
   }
 
   function clickItem(event, item: DocumentItem) {
@@ -447,6 +487,23 @@
   function clickSearchSettingOther() {
     openSettingsDialog();
   }
+
+  function clickSwitchCurShowDocIcon() {
+    let docId = getActiveTabId();
+    if (isStrBlank(docId)) {
+      docId = EnvConfig.ins.lastViewedDocId;
+    }
+    if (isStrBlank(docId)) {
+      console.log("出链搜索插件 获取不到当前打开的文档");
+      return;
+    }
+
+    let lockDocPathTemp = lockDocumentPath;
+    lockDocumentPath = false;
+    switchDoc(docId, null);
+    lockDocumentPath = lockDocPathTemp;
+  }
+
   function clickCrossBlockSearchIcon() {
     crossBlockSearch = !crossBlockSearch;
     if (isStrNotBlank(searchInputKey)) {
@@ -460,13 +517,13 @@
   }
 
   function clickExpandAll() {
-    toggleAllCollpsedItem(curPageDocItemArray, false);
-    curPageDocItemArray = curPageDocItemArray;
+    toggleAllCollpsedItem(curPageDocumentItemArray, false);
+    curPageDocumentItemArray = curPageDocumentItemArray;
   }
 
   function clickCollapseAll() {
-    toggleAllCollpsedItem(curPageDocItemArray, true);
-    curPageDocItemArray = curPageDocItemArray;
+    toggleAllCollpsedItem(curPageDocumentItemArray, true);
+    curPageDocumentItemArray = curPageDocumentItemArray;
   }
 </script>
 
@@ -477,6 +534,27 @@
   bind:this={rootElement}
 >
   <div class="block__icons" style="overflow: auto">
+    <span class=" fn__space"></span>
+    <span
+      class="block__icon ariaLabel"
+      aria-label="切换到当前打开的文档 "
+      style="opacity: 1;"
+      on:click={clickSwitchCurShowDocIcon}
+      on:keydown={handleKeyDownDefault}
+      ><svg><use xlink:href="#iconFocus"></use></svg></span
+    >
+    <span class="fn__space"></span>
+    <span
+      class="block__icon ariaLabel {lockDocumentPath ? 'label-selected' : ''}"
+      aria-label="锁定文档（禁止切换） "
+      style="opacity: 1;"
+      on:click={() => {
+        lockDocumentPath = !lockDocumentPath;
+      }}
+      on:keydown={handleKeyDownDefault}
+      ><svg><use xlink:href="#iconLockPath"></use></svg>
+    </span>
+
     <span class="fn__space"></span>
     <span
       class="block__icon ariaLabel {crossBlockSearch ? 'label-selected' : ''}"
@@ -558,7 +636,7 @@
     <span class="fn__space"></span>
     <!-- 路径信息 -->
     <span class="doc-name__span" on:touchmove|stopPropagation={() => {}}>
-      {@html showCurDocName}
+      {@html showCurDocumentName}
     </span>
   </div>
   <div
@@ -662,7 +740,7 @@
   </div>
   <div class="search__layout search__layout--row">
     <SearchResultItem
-      documentItemSearchResult={curPageDocItemArray}
+      documentItemSearchResult={curPageDocumentItemArray}
       selectedIndex={selectedItemIndex}
       clickCallback={clickItem}
     />

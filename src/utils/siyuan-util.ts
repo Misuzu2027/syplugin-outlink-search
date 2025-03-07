@@ -43,7 +43,7 @@ export function getActiveTab(): HTMLDivElement {
 export function getActiveTabId(): string {
   let currentDocument: HTMLDivElement = getActiveTab();
   if (!currentDocument) {
-    return;
+    return null;
   }
 
   const docTitleElement = currentDocument.querySelector(".protyle-title");
