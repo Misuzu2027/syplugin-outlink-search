@@ -2,7 +2,7 @@
   "name": "syplugin-outlink-search",
   "author": "Misuzu2027",
   "url": "https://github.com/Misuzu2027/syplugin-outlink-search",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "minAppVersion": "3.0.12",
   "backends": [
     "windows",
